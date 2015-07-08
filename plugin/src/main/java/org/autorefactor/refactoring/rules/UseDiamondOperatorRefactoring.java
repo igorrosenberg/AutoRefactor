@@ -31,6 +31,8 @@ import org.autorefactor.refactoring.Release;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Assignment;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.ParameterizedType;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.ReturnStatement;
@@ -80,10 +82,67 @@ public class UseDiamondOperatorRefactoring extends AbstractRefactoringRule {
         case RETURN_STATEMENT:
             return ReturnStatement.EXPRESSION_PROPERTY.equals(locationInParent);
         case VARIABLE_DECLARATION_FRAGMENT:
-            return VariableDeclarationFragment.INITIALIZER_PROPERTY.equals(locationInParent);
+            IMethodBinding binding = node.resolveConstructorBinding();
+            ITypeBinding typeBinding = node.resolveTypeBinding();
+            ITypeBinding typeDecl = typeBinding.getTypeDeclaration();
+            boolean parameterizedType = typeBinding.isParameterizedType();
+            if (parameterizedType) {
+                ITypeBinding typeDeclBinding = typeBinding.getTypeDeclaration();
+                IMethodBinding[] methods = typeDeclBinding.getDeclaredMethods();
+                methods.toString();
+            }
+            if (isDeclaredInAGenericType(binding)) {
+                if (!node.arguments().isEmpty()) {
+                    IMethodBinding methodDecl = binding.getMethodDeclaration();
+                    ITypeBinding parameterType = methodDecl.getParameterTypes()[0];
+                    if (parameterType.isParameterizedType()) {
+                        ITypeBinding typeDeclBinding = parameterType.getTypeDeclaration();
+                        ITypeBinding typeParameter = typeDeclBinding.getTypeParameters()[0];
+                        ITypeBinding iTypeBinding = typeDecl.getTypeParameters()[0];
+                        if (typeParameter.isTypeVariable()
+                                && iTypeBinding.equals(typeParameter)) {
+                            typeParameter.toString();
+                        }
+                    }
+                }
+                return VariableDeclarationFragment.INITIALIZER_PROPERTY.equals(locationInParent);
+            }
+            //TODO JNR can I use methodBinding.isSubsignature() with the rest of the code??
         default:
             return false;
         }
+    }
+
+    /**
+     * <blockquote> However, in certain cases of references to a generic method,
+     * the method binding may correspond to a copy of a generic method
+     * declaration with substitutions for the method's type parameters (for
+     * these, getTypeArguments returns a non-empty list, and either
+     * isParameterizedMethod or isRawMethod returns true). </blockquote>
+     *
+     * @see IMethodBinding
+     */
+    private boolean isReferenceToGenericMethod(IMethodBinding binding) {
+        return binding.getTypeArguments() != null
+                && binding.getTypeArguments().length == 0
+                && ((binding.isParameterizedMethod() && !binding.isRawMethod())
+                        || (!binding.isParameterizedMethod() && binding.isRawMethod()));
+    }
+
+    /**
+     * <blockquote> And in certain cases of references to a method declared in a
+     * generic type, the method binding may correspond to a copy of a method
+     * declaration with substitutions for the type's type parameters (for these,
+     * getTypeArguments returns an empty list, and both isParameterizedMethod
+     * and isRawMethod return false). </blockquote>
+     *
+     * @see IMethodBinding
+     */
+    private boolean isDeclaredInAGenericType(IMethodBinding binding) {
+        return binding.getTypeArguments() != null
+                && binding.getTypeArguments().length == 0
+                && !binding.isParameterizedMethod()
+                && !binding.isRawMethod();
     }
 
     private boolean removeAllTypeArguments(ParameterizedType pt) {

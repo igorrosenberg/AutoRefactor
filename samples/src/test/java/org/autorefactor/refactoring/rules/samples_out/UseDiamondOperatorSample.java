@@ -26,12 +26,13 @@
 package org.autorefactor.refactoring.rules.samples_out;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 public class UseDiamondOperatorSample {
 
-    private List<String> listField = new ArrayList<>();
+    private final List<String> listField = new ArrayList<>();
 
     public List<String> refactorVariableDeclarationStatement() {
         List<String> l = new ArrayList<>();
@@ -106,5 +107,10 @@ public class UseDiamondOperatorSample {
                 return super.toString();
             }
         };
+    }
+
+    public List<Object> doNotRefactor2(Collection<String> col) {
+        List<Object> list = new ArrayList<Object>(col);
+        return list;
     }
 }
